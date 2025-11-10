@@ -177,7 +177,7 @@ class GraphicsScene(QGraphicsScene):
         elif self.current_algorithm == "краскал":
             mst_edges = self.graph.kruskal()
         else:
-            return
+            return None
 
         for graphics_edge in self.edge_items.values():
             graphics_edge.setPen(QPen(Qt.black, 2))
@@ -185,6 +185,8 @@ class GraphicsScene(QGraphicsScene):
         for edge in mst_edges:
             if edge in self.edge_items:
                 self.edge_items[edge].setPen(QPen(Qt.red, 3))
+        
+        return mst_edges
 
     def clear(self):
         self.graph.clear()

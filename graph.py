@@ -13,7 +13,6 @@ class Graph:
         return point
 
     def add_edge(self, source, dest, weight=1.0):
-        # Проверяем, существует ли уже такое ребро
         for edge in self.edges:
             if (edge.source == source and edge.dest == dest) or \
                     (edge.source == dest and edge.dest == source):
@@ -43,16 +42,13 @@ class Graph:
         visited = set()
         edges_used = []
 
-        # Обрабатываем все компоненты связности
         for point in self.points:
             if point in visited:
                 continue
 
-            # Начинаем с текущей точки, если она еще не посещена
             start_point = point
             visited.add(start_point)
 
-            # Обрабатываем текущую компоненту связности
             while True:
                 min_edge = None
                 for node in visited:
@@ -63,7 +59,6 @@ class Graph:
                                 min_edge = edge
 
                 if min_edge is None:
-                    # В текущей компоненте связности больше нет ребер для добавления
                     break
 
                 edges_used.append(min_edge)

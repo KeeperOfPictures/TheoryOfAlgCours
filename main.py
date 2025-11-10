@@ -12,6 +12,8 @@ class GraphListWidget(QWidget):
         super().__init__()
         self.graph = graph
         self.scene = scene
+        self.algorithm_name = None
+        self.mst_weight = None
         self.init_ui()
         
     def init_ui(self):
@@ -65,7 +67,22 @@ class GraphListWidget(QWidget):
         edge_count = len(self.graph.edges)
         info_text = f"Вершин: {vertex_count}\nРёбер: {edge_count}"
         
+        if self.algorithm_name and self.mst_weight is not None:
+            info_text += f"\n\nАлгоритм: {self.algorithm_name}\nВес MST: {self.mst_weight:.2f}"
+        
         self.info_text.setPlainText(info_text)
+    
+    def set_algorithm_result(self, algorithm_name, mst_weight):
+        """Устанавливает информацию о результате работы алгоритма"""
+        self.algorithm_name = algorithm_name
+        self.mst_weight = mst_weight
+        self.update_graph_info()
+    
+    def clear_algorithm_result(self):
+        """Очищает информацию о результате алгоритма"""
+        self.algorithm_name = None
+        self.mst_weight = None
+        self.update_graph_info()
 
 class MainWindow(QMainWindow):
     def __init__(self):
@@ -141,7 +158,6 @@ class MainWindow(QMainWindow):
         self.run_algorithm_action.triggered.connect(self.run_algorithm)
         toolbar.addAction(self.run_algorithm_action)
         
-        # Новые кнопки для импорта и экспорта
         self.export_action = QAction("Экспорт", self)
         self.export_action.triggered.connect(self.export_graph)
         toolbar.addAction(self.export_action)
@@ -170,15 +186,25 @@ class MainWindow(QMainWindow):
         
     def run_algorithm(self):
         if self.scene.current_algorithm:
-            self.scene.run_algorithm()
-            self.status_bar.showMessage(f"Запуск {self.scene.current_algorithm.capitalize()} алгоритма")
+            mst_edges = self.scene.run_algorithm()
+            
+            if mst_edges is not None:
+                total_weight = sum(edge.weight for edge in mst_edges)
+                
+                algorithm_name = self.scene.current_algorithm.capitalize()
+                self.graph_list_widget.set_algorithm_result(algorithm_name, total_weight)
+                
+                self.status_bar.showMessage(
+                    f"Запуск {algorithm_name} алгоритма. Вес MST: {total_weight:.2f}"
+                )
+            else:
+                self.status_bar.showMessage(f"Запуск {self.scene.current_algorithm.capitalize()} алгоритма")
             
             self.graph_list_widget.update_graph_info()
         else:
             self.status_bar.showMessage("Сперва выберите алгоритм")
     
     def export_graph(self):
-        """Экспорт графа в файл"""
         file_path, _ = QFileDialog.getSaveFileName(
             self, "Экспорт графа", "", "Graph Files (*.json)"
         )
@@ -190,7 +216,6 @@ class MainWindow(QMainWindow):
                     'edges': []
                 }
                 
-                # Сохраняем вершины
                 for point in self.graph.points:
                     graph_data['points'].append({
                         'index': point.index,
@@ -198,7 +223,6 @@ class MainWindow(QMainWindow):
                         'y': point.y
                     })
                 
-                # Сохраняем рёбра
                 for edge in self.graph.edges:
                     graph_data['edges'].append({
                         'source_index': edge.source.index,
@@ -215,7 +239,6 @@ class MainWindow(QMainWindow):
                 QMessageBox.critical(self, "Ошибка экспорта", f"Не удалось экспортировать граф: {str(e)}")
     
     def import_graph(self):
-        """Импорт графа из файла"""
         file_path, _ = QFileDialog.getOpenFileName(
             self, "Импорт графа", "", "Graph Files (*.json)"
         )
@@ -225,17 +248,15 @@ class MainWindow(QMainWindow):
                 with open(file_path, 'r', encoding='utf-8') as f:
                     graph_data = json.load(f)
                 
-                # Очищаем текущий граф
                 self.scene.clear()
+                self.graph_list_widget.clear_algorithm_result()
                 
-                # Восстанавливаем вершины
                 points_map = {}
                 for point_data in graph_data['points']:
                     point = self.graph.add_point(point_data['x'], point_data['y'])
                     points_map[point_data['index']] = point
                     self.scene.add_node(point)
                 
-                # Восстанавливаем рёбра
                 for edge_data in graph_data['edges']:
                     source = points_map[edge_data['source_index']]
                     dest = points_map[edge_data['dest_index']]
@@ -253,6 +274,7 @@ class MainWindow(QMainWindow):
         
     def clear_scene(self):
         self.scene.clear()
+        self.graph_list_widget.clear_algorithm_result()
         self.status_bar.showMessage("Сцена очищена")
         
     def update_status(self):
