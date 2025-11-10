@@ -1,4 +1,5 @@
 import sys
+import json
 from PySide6.QtWidgets import *
 from PySide6.QtCore import *
 from PySide6.QtGui import *
@@ -16,12 +17,10 @@ class GraphListWidget(QWidget):
     def init_ui(self):
         layout = QVBoxLayout()
         
-        # Заголовок
         title_label = QLabel("Структура графа")
         title_label.setStyleSheet("font-weight: bold; font-size: 14px; margin: 10px;")
         layout.addWidget(title_label)
         
-        # Список вершин
         vertices_label = QLabel("Вершины:")
         vertices_label.setStyleSheet("font-weight: bold; margin-top: 10px;")
         layout.addWidget(vertices_label)
@@ -30,7 +29,6 @@ class GraphListWidget(QWidget):
         self.vertices_list.setMaximumHeight(150)
         layout.addWidget(self.vertices_list)
         
-        # Список рёбер
         edges_label = QLabel("Рёбра:")
         edges_label.setStyleSheet("font-weight: bold; margin-top: 10px;")
         layout.addWidget(edges_label)
@@ -79,23 +77,20 @@ class MainWindow(QMainWindow):
         self.scene = GraphicsScene(self.graph)
         self.view = QGraphicsView(self.scene)
         
-        # Создаем виджет списка графа
         self.graph_list_widget = GraphListWidget(self.graph, self.scene)
         
-        # Создаем центральный виджет с разделением
         splitter = QSplitter(Qt.Horizontal)
         splitter.addWidget(self.graph_list_widget)
         splitter.addWidget(self.view)
-        splitter.setSizes([300, 700])  # Начальные размеры
+        splitter.setSizes([300, 700])
         
         self.setCentralWidget(splitter)
         
         self.create_toolbar()
         
-        # Таймер для периодического обновления информации о графе
         self.update_timer = QTimer()
         self.update_timer.timeout.connect(self.graph_list_widget.update_graph_info)
-        self.update_timer.start(500)  # Обновлять каждые 500 мс
+        self.update_timer.start(500)
         
     def create_toolbar(self):
         toolbar = QToolBar()
@@ -146,6 +141,17 @@ class MainWindow(QMainWindow):
         self.run_algorithm_action.triggered.connect(self.run_algorithm)
         toolbar.addAction(self.run_algorithm_action)
         
+        # Новые кнопки для импорта и экспорта
+        self.export_action = QAction("Экспорт", self)
+        self.export_action.triggered.connect(self.export_graph)
+        toolbar.addAction(self.export_action)
+        
+        self.import_action = QAction("Импорт", self)
+        self.import_action.triggered.connect(self.import_graph)
+        toolbar.addAction(self.import_action)
+        
+        toolbar.addSeparator()
+        
         self.clear_action = QAction("Очистить", self)
         self.clear_action.triggered.connect(self.clear_scene)
         toolbar.addAction(self.clear_action)
@@ -166,10 +172,84 @@ class MainWindow(QMainWindow):
         if self.scene.current_algorithm:
             self.scene.run_algorithm()
             self.status_bar.showMessage(f"Запуск {self.scene.current_algorithm.capitalize()} алгоритма")
-            # Обновляем информацию после выполнения алгоритма
+            
             self.graph_list_widget.update_graph_info()
         else:
             self.status_bar.showMessage("Сперва выберите алгоритм")
+    
+    def export_graph(self):
+        """Экспорт графа в файл"""
+        file_path, _ = QFileDialog.getSaveFileName(
+            self, "Экспорт графа", "", "Graph Files (*.json)"
+        )
+        
+        if file_path:
+            try:
+                graph_data = {
+                    'points': [],
+                    'edges': []
+                }
+                
+                # Сохраняем вершины
+                for point in self.graph.points:
+                    graph_data['points'].append({
+                        'index': point.index,
+                        'x': point.x,
+                        'y': point.y
+                    })
+                
+                # Сохраняем рёбра
+                for edge in self.graph.edges:
+                    graph_data['edges'].append({
+                        'source_index': edge.source.index,
+                        'dest_index': edge.dest.index,
+                        'weight': edge.weight
+                    })
+                
+                with open(file_path, 'w', encoding='utf-8') as f:
+                    json.dump(graph_data, f, indent=2, ensure_ascii=False)
+                
+                self.status_bar.showMessage(f"Граф экспортирован в {file_path}")
+                
+            except Exception as e:
+                QMessageBox.critical(self, "Ошибка экспорта", f"Не удалось экспортировать граф: {str(e)}")
+    
+    def import_graph(self):
+        """Импорт графа из файла"""
+        file_path, _ = QFileDialog.getOpenFileName(
+            self, "Импорт графа", "", "Graph Files (*.json)"
+        )
+        
+        if file_path:
+            try:
+                with open(file_path, 'r', encoding='utf-8') as f:
+                    graph_data = json.load(f)
+                
+                # Очищаем текущий граф
+                self.scene.clear()
+                
+                # Восстанавливаем вершины
+                points_map = {}
+                for point_data in graph_data['points']:
+                    point = self.graph.add_point(point_data['x'], point_data['y'])
+                    points_map[point_data['index']] = point
+                    self.scene.add_node(point)
+                
+                # Восстанавливаем рёбра
+                for edge_data in graph_data['edges']:
+                    source = points_map[edge_data['source_index']]
+                    dest = points_map[edge_data['dest_index']]
+                    weight = edge_data['weight']
+                    
+                    edge = self.graph.add_edge(source, dest, weight)
+                    if edge:
+                        self.scene.add_edge(edge)
+                
+                self.status_bar.showMessage(f"Граф импортирован из {file_path}")
+                self.graph_list_widget.update_graph_info()
+                
+            except Exception as e:
+                QMessageBox.critical(self, "Ошибка импорта", f"Не удалось импортировать граф: {str(e)}")
         
     def clear_scene(self):
         self.scene.clear()
