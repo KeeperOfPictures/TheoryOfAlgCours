@@ -73,13 +73,11 @@ class GraphListWidget(QWidget):
         self.info_text.setPlainText(info_text)
     
     def set_algorithm_result(self, algorithm_name, mst_weight):
-        """Устанавливает информацию о результате работы алгоритма"""
         self.algorithm_name = algorithm_name
         self.mst_weight = mst_weight
         self.update_graph_info()
     
     def clear_algorithm_result(self):
-        """Очищает информацию о результате алгоритма"""
         self.algorithm_name = None
         self.mst_weight = None
         self.update_graph_info()
@@ -143,11 +141,19 @@ class MainWindow(QMainWindow):
         
         toolbar.addSeparator()
         
+        # Создаем отдельную группу для алгоритмов
+        self.algorithm_group = QActionGroup(self)
+        self.algorithm_group.setExclusive(True)  # Только один алгоритм может быть выбран
+        
         self.prim_action = QAction("Прим", self)
+        self.prim_action.setCheckable(True)  # Делаем кнопку переключаемой
         self.prim_action.triggered.connect(lambda: self.set_algorithm("прим"))
+        self.algorithm_group.addAction(self.prim_action)
         
         self.kruskal_action = QAction("Краскал", self)
+        self.kruskal_action.setCheckable(True)  # Делаем кнопку переключаемой
         self.kruskal_action.triggered.connect(lambda: self.set_algorithm("краскал"))
+        self.algorithm_group.addAction(self.kruskal_action)
         
         toolbar.addAction(self.prim_action)
         toolbar.addAction(self.kruskal_action)
@@ -182,6 +188,12 @@ class MainWindow(QMainWindow):
         
     def set_algorithm(self, algorithm):
         self.scene.current_algorithm = algorithm
+        # Устанавливаем соответствующую кнопку в нажатое состояние
+        if algorithm == "прим":
+            self.prim_action.setChecked(True)
+        elif algorithm == "краскал":
+            self.kruskal_action.setChecked(True)
+            
         self.status_bar.showMessage(f"Выбранный алгоритм: {algorithm.capitalize()}")
         
     def run_algorithm(self):
