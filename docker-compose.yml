@@ -1,0 +1,15 @@
+version: '3.8'
+services:
+  database-api:
+    build: ./database_api
+    container_name: graph-database-api
+    ports:
+      - "5000:5000"
+    volumes:
+      - sqlite_data:/app/data
+    environment:
+      - FLASK_ENV=production
+    restart: unless-stopped
+
+volumes:
+  sqlite_data:
