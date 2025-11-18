@@ -22,7 +22,15 @@ pip install PySide6
 ```
 
 ### Запуск приложения
+
+#### Локальная БД
 ```
+python main.py
+```
+
+#### БД в докере
+```
+docker-compose up -d
 python main.py
 ```
 
